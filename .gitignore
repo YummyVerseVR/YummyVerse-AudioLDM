@@ -16,3 +16,6 @@ checkpoints
 *.tar
 condor*
 wandb
+
+.direnv
+.venv
