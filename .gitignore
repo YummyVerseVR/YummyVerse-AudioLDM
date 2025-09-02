@@ -18,6 +18,6 @@ condor*
 wandb
 
 .direnv
-.venv
+.venv*
 
 nohup.out

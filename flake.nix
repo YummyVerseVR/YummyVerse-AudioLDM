@@ -23,6 +23,7 @@
           python310Packages.tkinter
           nvidia-docker
           cudaPackages.cudatoolkit
+          uv
         ];
         LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath (with pkgs; [
           pkg-config
@@ -34,6 +35,8 @@
           python310Packages.tkinter
           nvidia-docker
           cudaPackages.cudatoolkit
+          zlib
+          libxcrypt
         ]);
       };
     };
