@@ -19,3 +19,5 @@ wandb
 
 .direnv
 .venv
+
+nohup.out

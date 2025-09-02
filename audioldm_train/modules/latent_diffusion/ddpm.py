@@ -2,7 +2,7 @@ from multiprocessing.sharedctypes import Value
 import statistics
 import sys
 import os
-from tkinter import E
+# from tkinter import E
 
 import torch
 import torch.nn as nn
@@ -225,9 +225,9 @@ class DDPM(pl.LightningModule):
         self.num_timesteps = int(timesteps)
         self.linear_start = linear_start
         self.linear_end = linear_end
-        assert (
-            alphas_cumprod.shape[0] == self.num_timesteps
-        ), "alphas have to be defined for each timestep"
+        assert alphas_cumprod.shape[0] == self.num_timesteps, (
+            "alphas have to be defined for each timestep"
+        )
 
         to_torch = partial(torch.tensor, dtype=torch.float32)
 
@@ -573,9 +573,9 @@ class DDPM(pl.LightningModule):
             ) * self.initial_learning_rate
         else:
             # TODO set learning rate here
-            self.trainer.optimizers[0].param_groups[0][
-                "lr"
-            ] = self.initial_learning_rate
+            self.trainer.optimizers[0].param_groups[0]["lr"] = (
+                self.initial_learning_rate
+            )
 
     def training_step(self, batch, batch_idx):
         # You instantiate a optimizer for the scheduler
@@ -669,12 +669,12 @@ class DDPM(pl.LightningModule):
             if isinstance(
                 self.cond_stage_models[model_idx], CLAPAudioEmbeddingClassifierFreev2
             ):
-                self.cond_stage_model_metadata[key][
-                    "cond_stage_key_orig"
-                ] = self.cond_stage_model_metadata[key]["cond_stage_key"]
-                self.cond_stage_model_metadata[key][
-                    "embed_mode_orig"
-                ] = self.cond_stage_models[model_idx].embed_mode
+                self.cond_stage_model_metadata[key]["cond_stage_key_orig"] = (
+                    self.cond_stage_model_metadata[key]["cond_stage_key"]
+                )
+                self.cond_stage_model_metadata[key]["embed_mode_orig"] = (
+                    self.cond_stage_models[model_idx].embed_mode
+                )
                 if torch.randn(1).item() < 0.5:
                     self.cond_stage_model_metadata[key]["cond_stage_key"] = "text"
                     self.cond_stage_models[model_idx].embed_mode = "text"
@@ -696,12 +696,12 @@ class DDPM(pl.LightningModule):
             if isinstance(
                 self.cond_stage_models[model_idx], CLAPAudioEmbeddingClassifierFreev2
             ):
-                self.cond_stage_model_metadata[key][
-                    "cond_stage_key_orig"
-                ] = self.cond_stage_model_metadata[key]["cond_stage_key"]
-                self.cond_stage_model_metadata[key][
-                    "embed_mode_orig"
-                ] = self.cond_stage_models[model_idx].embed_mode
+                self.cond_stage_model_metadata[key]["cond_stage_key_orig"] = (
+                    self.cond_stage_model_metadata[key]["cond_stage_key"]
+                )
+                self.cond_stage_model_metadata[key]["embed_mode_orig"] = (
+                    self.cond_stage_models[model_idx].embed_mode
+                )
                 print(
                     "Change the model original cond_keyand embed_mode %s, %s to text during evaluation"
                     % (
@@ -715,12 +715,12 @@ class DDPM(pl.LightningModule):
             if isinstance(
                 self.cond_stage_models[model_idx], CLAPGenAudioMAECond
             ) or isinstance(self.cond_stage_models[model_idx], SequenceGenAudioMAECond):
-                self.cond_stage_model_metadata[key][
-                    "use_gt_mae_output_orig"
-                ] = self.cond_stage_models[model_idx].use_gt_mae_output
-                self.cond_stage_model_metadata[key][
-                    "use_gt_mae_prob_orig"
-                ] = self.cond_stage_models[model_idx].use_gt_mae_prob
+                self.cond_stage_model_metadata[key]["use_gt_mae_output_orig"] = (
+                    self.cond_stage_models[model_idx].use_gt_mae_output
+                )
+                self.cond_stage_model_metadata[key]["use_gt_mae_prob_orig"] = (
+                    self.cond_stage_models[model_idx].use_gt_mae_prob
+                )
                 print("Change the model condition to the predicted AudioMAE tokens")
                 self.cond_stage_models[model_idx].use_gt_mae_output = False
                 self.cond_stage_models[model_idx].use_gt_mae_prob = 0.0
@@ -752,18 +752,16 @@ class DDPM(pl.LightningModule):
 
     def on_validation_epoch_end(self) -> None:
         if self.global_rank == 0 and self.evaluator is not None:
-            assert (
-                self.test_data_subset_path is not None
-            ), "Please set test_data_subset_path before validation so that model have a target folder"
+            assert self.test_data_subset_path is not None, (
+                "Please set test_data_subset_path before validation so that model have a target folder"
+            )
             try:
-
                 name = self.validation_folder_name
                 waveform_save_path = os.path.join(self.get_log_dir(), name)
                 if (
                     os.path.exists(waveform_save_path)
                     and len(os.listdir(waveform_save_path)) > 0
                 ):
-
                     metrics = self.evaluator.main(
                         waveform_save_path,
                         self.test_data_subset_path,
@@ -794,9 +792,9 @@ class DDPM(pl.LightningModule):
             if isinstance(
                 self.cond_stage_models[model_idx], CLAPAudioEmbeddingClassifierFreev2
             ):
-                self.cond_stage_model_metadata[key][
-                    "cond_stage_key"
-                ] = self.cond_stage_model_metadata[key]["cond_stage_key_orig"]
+                self.cond_stage_model_metadata[key]["cond_stage_key"] = (
+                    self.cond_stage_model_metadata[key]["cond_stage_key_orig"]
+                )
                 self.cond_stage_models[
                     model_idx
                 ].embed_mode = self.cond_stage_model_metadata[key]["embed_mode_orig"]
@@ -1087,7 +1085,6 @@ class LatentDiffusion(DDPM):
     @rank_zero_only
     @torch.no_grad()
     def on_train_batch_start(self, batch, batch_idx):
-
         # only for very first batch
         if (
             self.scale_factor == 1
@@ -1978,7 +1975,6 @@ class DiffusionWrapper(pl.LightningModule):
         self.being_verbosed_once = False
 
     def forward(self, x, t, cond_dict: dict = {}):
-
         x = x.contiguous()
         t = t.contiguous()
 
