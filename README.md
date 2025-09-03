@@ -103,7 +103,7 @@ This repo only support inference with the model you trained by yourself. If you 
 ## Train the model using your own dataset
 Super easy, simply follow these steps:
 
-1. Prepare the metadata with the same format as the provided AudioCaps dataset. 
+1. Prepare the metadata with the same format as the provided AudioCaps dataset.
 2. Register in the metadata of your dataset in **data/dataset/metadata/dataset_root.json**
 3. Use your dataset in the YAML file.
 

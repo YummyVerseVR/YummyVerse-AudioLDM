@@ -68,6 +68,7 @@ def build_dataset_json_from_list(list_path):
 
 
 def load_json(fname):
+    print(fname)
     with open(fname, "r") as f:
         data = json.load(f)
         return data
