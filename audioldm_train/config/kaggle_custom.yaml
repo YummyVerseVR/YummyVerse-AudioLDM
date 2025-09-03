@@ -1,7 +1,7 @@
 metadata_root: "./data/dataset/kaggle_dataset/dataset.json"
 log_directory: "./log/latent_diffusion"
 project: "audioldm"
-precision: "high"
+precision: "medium"
 
 variables:
   sampling_rate: &sampling_rate 16000 
@@ -23,9 +23,9 @@ data:
 
 step:
   validation_every_n_epochs: 5
-  save_checkpoint_every_n_steps: 5000
+  save_checkpoint_every_n_steps: 100
   # limit_val_batches: 2
-  max_steps: 800000
+  max_steps: 80000
   save_top_k: 1
 
 preprocessing:

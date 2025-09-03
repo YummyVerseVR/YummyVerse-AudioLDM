@@ -147,10 +147,12 @@ def build_json_base(rows: list[AudioMeta]) -> dict[str, list[dict[str, str]]]:
 
 def build_manifest_as_json(
     dataset: dict[str, list[AudioMeta]],
-    train_manifest_path: Path,
-    test_manifest_path: Path,
-    test_rate: float = 0.1,
+    dataset_dir: Path,
+    test_rate: float = 0.05,
 ):
+    train_manifest_path = f"{dataset_dir}/train.json"
+    test_manifest_path = f"{dataset_dir}/test.json"
+    dataset_meta_json_path = f"{dataset_dir}/dataset.json"
     train = []
     test = []
 
@@ -158,8 +160,8 @@ def build_manifest_as_json(
         samples = dataset[label].copy()
         random.shuffle(samples)
         num_tests = int(len(samples) * test_rate)
-        train.extend(samples[:num_tests])
-        test.extend(samples[num_tests:])
+        train.extend(samples[num_tests:])
+        test.extend(samples[:num_tests])
 
     train_manifest = build_json_base(train)
     test_manifest = build_json_base(test)
@@ -171,6 +173,22 @@ def build_manifest_as_json(
     with open(test_manifest_path, "w") as f:
         json.dump(test_manifest, f)
     logger.info("Manifest saved to %s (%d rows)", test_manifest_path, len(test))
+
+    dataset_meta = {}
+    dataset_meta["audiocaps"] = "./"
+    dataset_meta["comments"] = {}
+    dataset_meta["metadata"] = {
+        "path": {
+            "audiocaps": {
+                "train": train_manifest_path,
+                "test": test_manifest_path,
+                "val": test_manifest_path,
+            }
+        }
+    }
+    with open(dataset_meta_json_path, "w") as f:
+        json.dump(dataset_meta, f)
+    logger.info("Dataset manifest saved to %s", dataset_meta_json_path)
 
 
 # -----------------------
@@ -205,9 +223,7 @@ def prepare(
         dataset[label].append(AudioMeta(src, out_path, duration, label, caption))
 
     # build_manifest(dataset, manifest_path)
-    build_manifest_as_json(
-        dataset, Path(f"{manifest_path}/train.json"), Path(f"{manifest_path}/test.json")
-    )
+    build_manifest_as_json(dataset, manifest_path)
     logger.info("Preparation complete. Processed data in: %s", processed_dir)
 
 
