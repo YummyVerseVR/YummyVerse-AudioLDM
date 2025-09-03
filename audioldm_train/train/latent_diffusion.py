@@ -9,6 +9,7 @@ import shutil
 import os
 
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
+os.environ["WANDB_DISABLED"] = "true"
 
 import argparse
 import yaml

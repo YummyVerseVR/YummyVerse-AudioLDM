@@ -20,6 +20,7 @@ dependencies = [
     "ruamel-yaml==0.18.5",
     "soundfile>=0.13.1",
     "taming-transformers-rom1504==0.0.6",
+    "torch==2.5",
     "transformers==4.30.2",
     "wandb==0.16.0",
     "webdataset==0.2.75",
