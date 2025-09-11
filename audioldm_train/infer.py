@@ -5,13 +5,13 @@ import argparse
 import yaml
 import torch
 
-from utilities.data.dataset import AudioDataset
+from .utilities.data.dataset import AudioDataset
 
 from torch.utils.data import DataLoader
 from pytorch_lightning import seed_everything
-from audioldm_train.utilities.tools import get_restore_step
-from audioldm_train.utilities.model_util import instantiate_from_config
-from audioldm_train.utilities.tools import build_dataset_json_from_list
+from .utilities.tools import get_restore_step
+from .utilities.model_util import instantiate_from_config
+from .utilities.tools import build_dataset_json_from_list
 
 
 def infer(dataset_json, configs, config_yaml_path, exp_group_name, exp_name):
@@ -89,6 +89,8 @@ def infer(dataset_json, configs, config_yaml_path, exp_group_name, exp_name):
         ddim_steps=ddim_sampling_steps,
         n_gen=n_candidates_per_samples,
     )
+
+    # latent_diffusion.save_pretrained("./model_data")
 
 
 if __name__ == "__main__":
