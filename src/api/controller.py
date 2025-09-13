@@ -2,7 +2,6 @@ import os
 import torch
 
 from audioldm_train.utilities.data.dataset import AudioDataset
-from audioldm_train.utilities.tools import get_restore_step
 from audioldm_train.utilities.model_util import instantiate_from_config
 
 from torch.utils.data import DataLoader
@@ -58,7 +57,7 @@ class AudioLDMController:
             raise ValueError(
                 f"Cannot find checkpoint at {checkpoint_path}, and reload_from_ckpt is None."
             )
-        checkpoint = torch.load(resume_from_checkpoint, map_location="cpu")
+        checkpoint = torch.load(resume_from_checkpoint)
 
         self.__model = instantiate_from_config(self.__config["model"])
         if self.__model is None:

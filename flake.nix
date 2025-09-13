@@ -20,7 +20,6 @@
           poetry
           llvmPackages_14.libllvm
           python310
-          python310Packages.tkinter
           nvidia-docker
           cudatoolkit
           uv
@@ -32,7 +31,6 @@
           rustup
           llvmPackages_14.libllvm
           stdenv.cc.cc.lib
-          python310Packages.tkinter
           nvidia-docker
           cudatoolkit
           zlib

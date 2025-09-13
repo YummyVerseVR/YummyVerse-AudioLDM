@@ -100,7 +100,7 @@ class App:
         self,
         user_id: str = Form(...),
         prompt: str = Form(...),
-        background_tasks: BackgroundTasks = None,
+        background_tasks: BackgroundTasks = BackgroundTasks(),
     ):
         self.__tasks[user_id] = {"status": "pending", "timestamp": time.time()}
         background_tasks.add_task(self.__background_generate, user_id, prompt)
