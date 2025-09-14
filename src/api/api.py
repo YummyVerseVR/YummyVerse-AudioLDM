@@ -25,6 +25,7 @@ class App:
             checkpoint_path,
             yaml.load(open(config_path, "r"), Loader=yaml.FullLoader),
         )
+        self.__model.set_savepath(App.OUTPUT_DIR)
         self.__tasks: dict[str, dict] = {}
         self.__db_endpoint = db_endpoint
         os.makedirs(App.OUTPUT_DIR, exist_ok=True)

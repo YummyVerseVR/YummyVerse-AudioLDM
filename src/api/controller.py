@@ -1,3 +1,4 @@
+import shutil
 import os
 import torch
 
@@ -17,6 +18,7 @@ class AudioLDMController:
     ):
         self.__config = config
         self.__addons = []
+        self.__save_path = ""
 
         if "seed" in self.__config.keys():
             seed_everything(self.__config["seed"])
@@ -71,6 +73,13 @@ class AudioLDMController:
         else:
             self.__model.cpu()
 
+    def set_savepath(self, path: str):
+        if self.__model is None:
+            return
+
+        self.__save_path = path
+        self.__model.set_log_dir(path, "", "")
+
     def generate_audio(self, uuid: str, prompt: str):
         if self.__model is None:
             raise ValueError("Model is None, cannot generate audio.")
@@ -99,3 +108,8 @@ class AudioLDMController:
             ddim_steps=self.__ddim_steps,
             n_gen=self.__nc_per_sample,
         )
+
+        for dir in os.listdir(self.__save_path):
+            for file in os.listdir(f"{self.__save_path}/{dir}"):
+                shutil.move(f"{self.__save_path}/{dir}/{file}", f"{self.__save_path}")
+                shutil.rmtree(f"{self.__save_path}/{dir}")
