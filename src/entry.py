@@ -26,7 +26,14 @@ if __name__ == "__main__":
         required=True,
         help="the endpoint for the vector database",
     )
+    parser.add_argument(
+        "-p",
+        "--port",
+        type=int,
+        default=9000,
+        help="the port to run the server on",
+    )
 
     args = parser.parse_args()
     app = App(args.model_checkpoint, args.config, args.database_endpoint)
-    uvicorn.run(app.get_app(), host="0.0.0.0", port=9000, log_level="info")
+    uvicorn.run(app.get_app(), host="0.0.0.0", port=args.port, log_level="info")
