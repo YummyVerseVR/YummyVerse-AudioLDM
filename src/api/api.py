@@ -15,9 +15,10 @@ class App:
 
     def __init__(
         self,
-        checkpoint_path: str = "./latest.ckpt",
-        config_path: str = "./config.yaml",
-        db_endpoint: str = "http://localhost:8000",
+        checkpoint_path: str,
+        config_path: str,
+        db_endpoint: str,
+        debug: bool = False,
     ):
         self.__app = FastAPI()
         self.__router = APIRouter()
@@ -27,6 +28,7 @@ class App:
         )
         self.__model.set_savepath(App.OUTPUT_DIR)
         self.__tasks: dict[str, dict] = {}
+        self.__debug = debug
         self.__db_endpoint = db_endpoint
         os.makedirs(App.OUTPUT_DIR, exist_ok=True)
 
@@ -46,6 +48,10 @@ class App:
         )
 
     def __save_to_db(self, user_id: str, audio_path: str):
+        if self.__debug:
+            print("[DEBUG] Database server connetion skipped")
+            return
+
         try:
             with open(audio_path, "rb") as f:
                 files = {"file": (os.path.basename(audio_path), f, "audio/wav")}
@@ -53,6 +59,7 @@ class App:
                 response = requests.post(
                     f"{self.__db_endpoint}/save/audio", files=files, data=data
                 )
+                os.remove(audio_path)
                 response.raise_for_status()
         except Exception as e:
             print(f"Failed to save to DB: {e}")
