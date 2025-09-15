@@ -92,7 +92,7 @@ class AudioLDMController:
                 "data": [
                     {
                         "wav": f"{uuid}.wav",
-                        "caption": prompt,
+                        "caption": f"Sound of eating {prompt}",
                     }
                 ]
             },
