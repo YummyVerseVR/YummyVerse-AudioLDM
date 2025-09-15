@@ -31,8 +31,8 @@ parser.add_argument(
     "--port",
     type=int,
     required=False,
-    default=8002,
-    help="port to run the server (default: 8002)",
+    default=8003,
+    help="port to run the server (default: 8003)",
 )
 parser.add_argument("--debug", action="store_true", help="enable debug mode")
 
