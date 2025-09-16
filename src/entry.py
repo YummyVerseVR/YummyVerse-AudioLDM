@@ -23,7 +23,7 @@ parser.add_argument(
     "--database-endpoint",
     type=str,
     required=False,
-    default="http://192.168.11.128:8001",
+    default="http://192.168.11.129:8001",
     help="the endpoint for the database",
 )
 parser.add_argument(
