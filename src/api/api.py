@@ -36,7 +36,7 @@ class App:
 
     def __setup_routes(self):
         self.__app.add_event_handler("startup", self.startup_event)
-        self.__router.post("/generate/")(self.generate_audio)
+        self.__router.post("/generate")(self.generate_audio)
         self.__router.get("/status/{task_id}")(self.get_status)
         self.__router.get("/download/{task_id}")(self.download_result)
         self.__router.get("/queue")(self.queue_status)
