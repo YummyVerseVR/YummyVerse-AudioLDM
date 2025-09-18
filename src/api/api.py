@@ -11,7 +11,7 @@ from .controller import AudioLDMController
 
 class App:
     OUTPUT_DIR = "./outputs"
-    EXPIRE_SECONDS = 3600
+    EXPIRE_SECONDS = 300  # 5 minutes
 
     def __init__(
         self,
@@ -144,3 +144,7 @@ class App:
             "done": [tid for tid, t in self.__tasks.items() if t["status"] == "done"],
             "error": [tid for tid, t in self.__tasks.items() if t["status"] == "error"],
         }
+
+    # /ping
+    async def ping(self) -> JSONResponse:
+        return JSONResponse(content={"message": "pong"})
