@@ -40,6 +40,7 @@ class App:
         self.__router.get("/status/{task_id}")(self.get_status)
         self.__router.get("/download/{task_id}")(self.download_result)
         self.__router.get("/queue")(self.queue_status)
+        self.__router.get("/ping")(self.ping)
 
     def __generate(self, prompt: str, output_path: str):
         self.__model.generate_audio(
