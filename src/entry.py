@@ -4,7 +4,7 @@ import uvicorn
 from api.app import App
 
 
-SETTING_PATH = "./settings/meta.json"
+CONFIG_PATH = "./settings/meta.json"
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -22,10 +22,10 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-with open(SETTING_PATH, "r") as f:
-    settings = json.load(f)
+with open(CONFIG_PATH, "r") as f:
+    config = json.load(f)
 
-app = App(settings, args.debug).get_app()
+app = App(config, args.debug).get_app()
 
 if __name__ == "__main__":
     uvicorn.run("entry:app", host="0.0.0.0", port=args.port, log_level="info")
