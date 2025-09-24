@@ -7,7 +7,7 @@ import yaml
 from pydantic import BaseModel
 
 from fastapi import FastAPI, APIRouter, BackgroundTasks
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import JSONResponse
 
 from .controller import AudioLDMController
 
@@ -18,27 +18,29 @@ class UserRequest(BaseModel):
 
 
 class App:
-    OUTPUT_DIR = "./outputs"
-    EXPIRE_SECONDS = 300  # 5 minutes
-
     def __init__(
         self,
-        checkpoint_path: str,
-        config_path: str,
-        db_endpoint: str,
+        config: dict,
         debug: bool = False,
     ):
         self.__app = FastAPI()
         self.__router = APIRouter()
+        config_path = config.get("config", "./config/kaggle_custom.yaml")
+        checkpoint_path = config.get("checkpoint", "./data/checkpoints/trained.ckpt")
+        self.__output_dir = config.get("output", "./output")
+        self.__expire_time = config.get("expire", 300)
         self.__model = AudioLDMController(
             checkpoint_path,
             yaml.load(open(config_path, "r"), Loader=yaml.FullLoader),
         )
-        self.__model.set_savepath(App.OUTPUT_DIR)
+        self.__model.set_savepath(self.__output_dir)
         self.__tasks: dict[str, dict] = {}
         self.__debug = debug
-        self.__db_endpoint = db_endpoint
-        os.makedirs(App.OUTPUT_DIR, exist_ok=True)
+        self.__endpoint = config.get("endpoints", {})
+        self.__control_endpoint = self.__endpoint.get(
+            "control", "http://localhost:8000"
+        )
+        os.makedirs(self.__output_dir, exist_ok=True)
 
         self.__setup_routes()
 
@@ -82,7 +84,7 @@ class App:
                 data = {"user_id": user_id}
                 print(f"[INFO] Saving to DB for user_id: {user_id}")
                 response = requests.post(
-                    f"{self.__db_endpoint}/save/audio", files=files, data=data
+                    f"{self.__control_endpoint}/save/audio", files=files, data=data
                 )
                 os.remove(audio_path)
                 response.raise_for_status()
@@ -92,7 +94,7 @@ class App:
     def __background_generate(self, user_id: str, prompt: str):
         try:
             self.__tasks[user_id]["status"] = "processing"
-            out_path = os.path.join(App.OUTPUT_DIR, f"{user_id}.wav")
+            out_path = os.path.join(self.__output_dir, f"{user_id}.wav")
             self.__generate(prompt, out_path)
             self.__tasks[user_id]["status"] = "done"
             self.__tasks[user_id]["result"] = out_path
@@ -108,7 +110,7 @@ class App:
             expired = [
                 tid
                 for tid, t in self.__tasks.items()
-                if "timestamp" in t and now - t["timestamp"] > App.EXPIRE_SECONDS
+                if "timestamp" in t and now - t["timestamp"] > self.__expire_time
             ]
             for tid in expired:
                 result_path = self.__tasks[tid].get("result")
