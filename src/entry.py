@@ -1,6 +1,6 @@
 import argparse
 import uvicorn
-from api.api import App
+from api.app import App
 
 parser = argparse.ArgumentParser()
 

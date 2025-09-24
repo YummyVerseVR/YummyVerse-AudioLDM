@@ -1,12 +1,20 @@
-from fastapi import FastAPI, APIRouter, Form, BackgroundTasks
-from fastapi.responses import FileResponse, JSONResponse
 import requests
 import os
 import time
 import asyncio
 import yaml
 
+from pydantic import BaseModel
+
+from fastapi import FastAPI, APIRouter, Form, BackgroundTasks
+from fastapi.responses import FileResponse, JSONResponse
+
 from .controller import AudioLDMController
+
+
+class UserRequest(BaseModel):
+    user_id: str
+    prompt: str
 
 
 class App:
@@ -36,7 +44,7 @@ class App:
 
     def __setup_routes(self):
         self.__app.add_event_handler("startup", self.startup_event)
-        self.__router.post("/generate/")(self.generate_audio)
+        self.__router.post("/generate")(self.generate_audio)
         self.__router.get("/status/{task_id}")(self.get_status)
         self.__router.get("/download/{task_id}")(self.download_result)
         self.__router.get("/queue")(self.queue_status)
@@ -57,13 +65,14 @@ class App:
             with open(audio_path, "rb") as f:
                 files = {"file": (os.path.basename(audio_path), f, "audio/wav")}
                 data = {"user_id": user_id}
+                print(f"[INFO] Saving to DB for user_id: {user_id}")
                 response = requests.post(
                     f"{self.__db_endpoint}/save/audio", files=files, data=data
                 )
                 os.remove(audio_path)
                 response.raise_for_status()
         except Exception as e:
-            print(f"Failed to save to DB: {e}")
+            print(f"[ERROR] Failed to save to DB: {e}")
 
     def __background_generate(self, user_id: str, prompt: str):
         try:
@@ -100,39 +109,48 @@ class App:
         self.__app.include_router(self.__router)
         return self.__app
 
-    # @app.on_event("startup")
+    # on_event("startup")
     async def startup_event(self):
         asyncio.create_task(self.__cleanup_expired_files())
 
-    # @app.post("/generate/")
+    # /generate
     async def generate_audio(
         self,
-        user_id: str = Form(...),
-        prompt: str = Form(...),
+        request: UserRequest,
         background_tasks: BackgroundTasks = BackgroundTasks(),
-    ):
-        self.__tasks[user_id] = {"status": "pending", "timestamp": time.time()}
-        background_tasks.add_task(self.__background_generate, user_id, prompt)
-        return {"user_id": user_id}
+    ) -> JSONResponse:
+        self.__tasks[request.user_id] = {"status": "pending", "timestamp": time.time()}
+        background_tasks.add_task(
+            self.__background_generate, request.user_id, request.prompt
+        )
+        return JSONResponse(
+            status_code=202,
+            content={"message": "Task accepted", "task_id": request.user_id},
+        )
 
-    # @app.get("/status/{task_id}")
-    async def get_status(self, user_id: str):
+    # /status/{task_id}
+    async def get_status(self, user_id: str) -> JSONResponse:
         if user_id not in self.__tasks:
             return JSONResponse(status_code=404, content={"error": "Task not found"})
-        return self.__tasks[user_id]
+        return JSONResponse(
+            content={"task_id": user_id, "status": self.__tasks[user_id]["status"]}
+        )
 
-    # @app.get("/download/{task_id}")
-    async def download_result(self, task_id: str):
+    # /download/{task_id}
+    async def download_result(self, task_id: str) -> FileResponse:
         task = self.__tasks.get(task_id)
         if not task or task.get("status") != "done":
-            return JSONResponse(status_code=404, content={"error": "Result not ready"})
+            return FileResponse(
+                "./dummy",
+                status_code=404,
+            )
         return FileResponse(
             task["result"],
             media_type="audio/wav",
             filename=os.path.basename(task["result"]),
         )
 
-    # @app.get("/queue")
+    # /queue
     async def queue_status(self):
         return {
             "total": len(self.__tasks),

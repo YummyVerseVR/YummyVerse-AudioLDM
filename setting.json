@@ -1,0 +1,9 @@
+{
+    "audioldm": {
+        "config": "./config/kaggle_custom.yaml",
+        "model": "./data/checkpoints/trained.ckpt"
+    },
+    "endpoints": {
+        "control": "http://192.168.11.129:8000"
+    }
+}
