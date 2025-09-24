@@ -55,11 +55,6 @@ class App:
             methods=["GET"],
         )
         self.__router.add_api_route(
-            "/download/{task_id}",
-            self.download_result,
-            methods=["GET"],
-        )
-        self.__router.add_api_route(
             "/queue",
             self.queue_status,
             methods=["GET"],
@@ -154,20 +149,6 @@ class App:
             return JSONResponse(status_code=404, content={"error": "Task not found"})
         return JSONResponse(
             content={"task_id": user_id, "status": self.__tasks[user_id]["status"]}
-        )
-
-    # /download/{task_id}
-    async def download_result(self, task_id: str) -> FileResponse:
-        task = self.__tasks.get(task_id)
-        if not task or task.get("status") != "done":
-            return FileResponse(
-                "./dummy",
-                status_code=404,
-            )
-        return FileResponse(
-            task["result"],
-            media_type="audio/wav",
-            filename=os.path.basename(task["result"]),
         )
 
     # /queue
