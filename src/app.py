@@ -60,26 +60,10 @@ class App:
 
     def __setup_routes(self):
         self.__app.add_event_handler("startup", self.startup_event)
-        self.__router.add_api_route(
-            "/generate",
-            self.generate_audio,
-            methods=["POST"],
-        )
-        self.__router.add_api_route(
-            "/status/{task_id}",
-            self.get_status,
-            methods=["GET"],
-        )
-        self.__router.add_api_route(
-            "/queue",
-            self.queue_status,
-            methods=["GET"],
-        )
-        self.__router.add_api_route(
-            "/ping",
-            self.ping,
-            methods=["GET"],
-        )
+        self.__router.post("/generate")(self.generate_audio)
+        self.__router.get("/status/{task_id}")(self.get_status)
+        self.__router.get("/queue")(self.queue_status)
+        self.__router.get("/ping")(self.ping)
 
     def __generate(self, prompt: str, output_path: str):
         self.__model.generate_audio(
