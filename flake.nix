@@ -6,7 +6,7 @@
       system = "x86_64-linux";
       pkgs = import nixpkgs {
         inherit system;
-        config. allowUnfree = true;
+        config.allowUnfree = true;
         config.cudaSupport = true;
       };
     in
@@ -20,19 +20,20 @@
           poetry
           llvmPackages_14.libllvm
           python310
-          # nvidia-docker
+          nvidia-docker
           cudatoolkit
           cudaPackages.cudnn
           uv
         ];
         LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath (with pkgs; [
+          libgcc
           pkg-config
           openssl
           cargo
           rustup
           llvmPackages_14.libllvm
           stdenv.cc.cc.lib
-          # nvidia-docker
+          nvidia-docker
           cudatoolkit
           cudaPackages.cudnn
           zlib

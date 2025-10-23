@@ -26,3 +26,5 @@ latest.ckpt
 
 audio_dataset/
 clips_rd/
+
+*.service
