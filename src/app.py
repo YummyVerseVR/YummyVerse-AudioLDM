@@ -5,11 +5,12 @@ import asyncio
 import yaml
 
 from pydantic import BaseModel
+from pylognet.client import LoggingClient, LogLevel
 
 from fastapi import FastAPI, APIRouter, BackgroundTasks
 from fastapi.responses import JSONResponse
 
-from .controller import AudioLDMController
+from controller import AudioLDMController
 
 
 class UserRequest(BaseModel):
@@ -22,6 +23,7 @@ class App:
         self,
         config: dict,
         debug: bool = False,
+        logging: bool = False,
     ):
         self.__app = FastAPI()
         self.__router = APIRouter()
@@ -29,18 +31,30 @@ class App:
         checkpoint_path = config.get("checkpoint", "./data/checkpoints/trained.ckpt")
         self.__output_dir = config.get("output", "./output")
         self.__expire_time = config.get("expire", 300)
-        self.__model = AudioLDMController(
-            checkpoint_path,
-            yaml.load(open(config_path, "r"), Loader=yaml.FullLoader),
-        )
-        self.__model.set_savepath(self.__output_dir)
         self.__tasks: dict[str, dict] = {}
         self.__debug = debug
-        self.__endpoint = config.get("endpoints", {})
-        self.__control_endpoint = self.__endpoint.get(
+        self.__endpoints = config.get("endpoints", {})
+        self.__control_endpoint = self.__endpoints.get(
             "control", "http://localhost:8000"
         )
         os.makedirs(self.__output_dir, exist_ok=True)
+
+        self.__logger_endpoint = self.__endpoints.get(
+            "logger", "http://logger.local:9000"
+        )
+
+        self.__logger = LoggingClient(
+            "YummyAudioGenServer",
+            self.__logger_endpoint,
+            disable=not logging,
+        )
+
+        self.__model = AudioLDMController(
+            checkpoint_path,
+            yaml.load(open(config_path, "r"), Loader=yaml.FullLoader),
+            self.__logger,
+        )
+        self.__model.set_savepath(self.__output_dir)
 
         self.__setup_routes()
 
@@ -75,21 +89,30 @@ class App:
 
     def __save_to_db(self, user_id: str, audio_path: str):
         if self.__debug:
-            print("[DEBUG] Database server connetion skipped")
+            self.__logger.log(
+                "Database server connection skipped in debug mode",
+                LogLevel.DEBUG,
+            )
             return
 
         try:
             with open(audio_path, "rb") as f:
                 files = {"file": (os.path.basename(audio_path), f, "audio/wav")}
                 data = {"user_id": user_id}
-                print(f"[INFO] Saving to DB for user_id: {user_id}")
+                self.__logger.log(
+                    f"Saving generated audio to DB for user_id: {user_id}",
+                    LogLevel.INFO,
+                )
                 response = requests.post(
                     f"{self.__control_endpoint}/save/audio", files=files, data=data
                 )
                 os.remove(audio_path)
                 response.raise_for_status()
         except Exception as e:
-            print(f"[ERROR] Failed to save to DB: {e}")
+            self.__logger.log(
+                f"Failed to save generated audio to DB for user_id: {user_id}: {e}",
+                LogLevel.ERROR,
+            )
 
     def __background_generate(self, user_id: str, prompt: str):
         try:
@@ -140,6 +163,12 @@ class App:
         background_tasks.add_task(
             self.__background_generate, request.user_id, request.prompt
         )
+
+        self.__logger.log(
+            f"Accepted audio generation task for user_id: {request.user_id}",
+            LogLevel.INFO,
+        )
+
         return JSONResponse(
             status_code=202,
             content={"message": "Task accepted", "task_id": request.user_id},

@@ -2,6 +2,8 @@ import shutil
 import os
 import torch
 
+from pylognet.client import LoggingClient, LogLevel
+
 from audioldm_train.utilities.data.dataset import AudioDataset
 from audioldm_train.utilities.model_util import instantiate_from_config
 
@@ -14,16 +16,17 @@ class AudioLDMController:
         self,
         checkpoint_path: str,
         config: dict,
+        logger: LoggingClient,
         target_arch: str = "cuda",
     ):
         self.__config = config
+        self.__logger = logger
         self.__addons = []
         self.__save_path = ""
 
         if "seed" in self.__config.keys():
             seed_everything(self.__config["seed"])
         else:
-            print("SEED EVERYTHING TO 0")
             seed_everything(0)
 
         if "precision" in self.__config.keys():
@@ -49,12 +52,17 @@ class AudioLDMController:
 
         resume_from_checkpoint = ""
         if os.path.exists(checkpoint_path):
-            print("Load checkpoint from path: %s" % checkpoint_path)
             resume_from_checkpoint = checkpoint_path
-            print("Resume from checkpoint", resume_from_checkpoint)
+            self.__logger.log(
+                f"Load and resume checkpoint from {checkpoint_path}",
+                LogLevel.INFO,
+            )
         elif reload_from_ckpt is not None:
             resume_from_checkpoint = reload_from_ckpt
-            print("Reload from checkpoint", resume_from_checkpoint)
+            self.__logger.log(
+                f"Resume checkpoint from {checkpoint_path}",
+                LogLevel.INFO,
+            )
         else:
             raise ValueError(
                 f"Cannot find checkpoint at {checkpoint_path}, and reload_from_ckpt is None."
