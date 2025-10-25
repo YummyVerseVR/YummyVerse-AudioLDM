@@ -1,13 +1,12 @@
 import requests
 import os
-import time
 import asyncio
 import yaml
 
 from pydantic import BaseModel
 from pylognet.client import LoggingClient, LogLevel
 
-from fastapi import FastAPI, APIRouter, BackgroundTasks
+from fastapi import FastAPI, APIRouter
 from fastapi.responses import JSONResponse
 
 from controller import AudioLDMController
@@ -30,8 +29,6 @@ class App:
         config_path = config.get("config", "./config/kaggle_custom.yaml")
         checkpoint_path = config.get("checkpoint", "./data/checkpoints/trained.ckpt")
         self.__output_dir = config.get("output", "./output")
-        self.__expire_time = config.get("expire", 300)
-        self.__tasks: dict[str, dict] = {}
         self.__debug = debug
         self.__endpoints = config.get("endpoints", {})
         self.__control_endpoint = self.__endpoints.get(
@@ -44,11 +41,12 @@ class App:
         )
 
         self.__logger = LoggingClient(
-            "YummyAudioGenServer",
+            "YummyAudioServer",
             self.__logger_endpoint,
             disable=not logging,
         )
 
+        self.__queue = asyncio.Queue()
         self.__model = AudioLDMController(
             checkpoint_path,
             yaml.load(open(config_path, "r"), Loader=yaml.FullLoader),
@@ -56,20 +54,31 @@ class App:
         )
         self.__model.set_savepath(self.__output_dir)
 
+        asyncio.create_task(self.__worker())
+
         self.__setup_routes()
+        self.__logger.log(
+            "Audio Generation Server initialized successfully",
+            LogLevel.INFO,
+        )
 
     def __setup_routes(self):
-        self.__app.add_event_handler("startup", self.startup_event)
-        self.__router.post("/generate")(self.generate_audio)
-        self.__router.get("/status/{task_id}")(self.get_status)
-        self.__router.get("/queue")(self.queue_status)
-        self.__router.get("/ping")(self.ping)
-
-    def __generate(self, prompt: str, output_path: str):
-        self.__model.generate_audio(
-            output_path,
-            prompt=prompt,
+        self.__router.add_api_route(
+            "/generate",
+            self.generate,
+            methods=["POST"],
         )
+        self.__router.add_api_route(
+            "/ping",
+            self.ping,
+            methods=["GET"],
+        )
+
+    async def __worker(self):
+        while True:
+            item = await self.__queue.get()
+            self.__generate(item.user_id, item.prompt)
+            self.__queue.task_done()
 
     def __save_to_db(self, user_id: str, audio_path: str):
         if self.__debug:
@@ -98,87 +107,45 @@ class App:
                 LogLevel.ERROR,
             )
 
-    def __background_generate(self, user_id: str, prompt: str):
+        os.remove(audio_path)
+
+    def __generate(self, user_id: str, prompt: str):
         try:
-            self.__tasks[user_id]["status"] = "processing"
             out_path = os.path.join(self.__output_dir, f"{user_id}.wav")
-            self.__generate(prompt, out_path)
-            self.__tasks[user_id]["status"] = "done"
-            self.__tasks[user_id]["result"] = out_path
-            self.__tasks[user_id]["timestamp"] = time.time()
+            self.__model.generate_audio(
+                out_path,
+                prompt=prompt,
+            )
+            self.__logger.log(
+                f"Completed audio generation for prompt: {prompt}, saved to {out_path}",
+                LogLevel.INFO,
+            )
             self.__save_to_db(user_id, out_path)
         except Exception as e:
-            self.__tasks[user_id]["status"] = "error"
-            self.__tasks[user_id]["error"] = str(e)
-
-    async def __cleanup_expired_files(self):
-        while True:
-            now = time.time()
-            expired = [
-                tid
-                for tid, t in self.__tasks.items()
-                if "timestamp" in t and now - t["timestamp"] > self.__expire_time
-            ]
-            for tid in expired:
-                result_path = self.__tasks[tid].get("result")
-                if result_path and os.path.exists(result_path):
-                    try:
-                        os.remove(result_path)
-                    except Exception:
-                        pass
-                del self.__tasks[tid]
-            await asyncio.sleep(300)  # Check every 5 minutes
+            self.__logger.log(
+                f"Error during audio generation for prompt: {prompt}: {e}",
+                LogLevel.ERROR,
+            )
 
     def get_app(self):
         self.__app.include_router(self.__router)
         return self.__app
 
-    # on_event("startup")
-    async def startup_event(self):
-        asyncio.create_task(self.__cleanup_expired_files())
-
     # /generate
-    async def generate_audio(
+    async def generate(
         self,
         request: UserRequest,
-        background_tasks: BackgroundTasks = BackgroundTasks(),
     ) -> JSONResponse:
-        self.__tasks[request.user_id] = {"status": "pending", "timestamp": time.time()}
-        background_tasks.add_task(
-            self.__background_generate, request.user_id, request.prompt
-        )
-
         self.__logger.log(
-            f"Accepted audio generation task for user_id: {request.user_id}",
+            f"Accepted audio generation task for prompt: {request.prompt}",
             LogLevel.INFO,
         )
+        await self.__queue.put(request)
 
         return JSONResponse(
             status_code=202,
-            content={"message": "Task accepted", "task_id": request.user_id},
+            content={"message": "Task enqueued", "user_id": request.user_id},
         )
-
-    # /status/{task_id}
-    async def get_status(self, user_id: str) -> JSONResponse:
-        if user_id not in self.__tasks:
-            return JSONResponse(status_code=404, content={"error": "Task not found"})
-        return JSONResponse(
-            content={"task_id": user_id, "status": self.__tasks[user_id]["status"]}
-        )
-
-    # /queue
-    async def queue_status(self):
-        return {
-            "total": len(self.__tasks),
-            "pending": [
-                tid for tid, t in self.__tasks.items() if t["status"] == "pending"
-            ],
-            "processing": [
-                tid for tid, t in self.__tasks.items() if t["status"] == "processing"
-            ],
-            "done": [tid for tid, t in self.__tasks.items() if t["status"] == "done"],
-            "error": [tid for tid, t in self.__tasks.items() if t["status"] == "error"],
-        }
 
     # /ping
     async def ping(self) -> JSONResponse:
