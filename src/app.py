@@ -103,8 +103,6 @@ class App:
                 LogLevel.ERROR,
             )
 
-        os.remove(audio_path)
-
     def __generate(self, user_id: str, prompt: str):
         try:
             out_path = os.path.join(self.__output_dir, f"{user_id}.wav")
