@@ -8,6 +8,7 @@ from pylognet.client import LoggingClient, LogLevel
 
 from fastapi import FastAPI, APIRouter
 from fastapi.responses import JSONResponse
+from concurrent.futures import ThreadPoolExecutor
 
 from controller import AudioLDMController
 
@@ -47,14 +48,13 @@ class App:
         )
 
         self.__queue = asyncio.Queue()
+        self.__executor = ThreadPoolExecutor()
         self.__model = AudioLDMController(
             checkpoint_path,
             yaml.load(open(config_path, "r"), Loader=yaml.FullLoader),
             self.__logger,
         )
         self.__model.set_savepath(self.__output_dir)
-
-        asyncio.create_task(self.__worker())
 
         self.__setup_routes()
         self.__logger.log(
@@ -63,6 +63,8 @@ class App:
         )
 
     def __setup_routes(self):
+        self.__router.add_event_handler("startup", self.__activate)
+
         self.__router.add_api_route(
             "/generate",
             self.generate,
@@ -73,12 +75,6 @@ class App:
             self.ping,
             methods=["GET"],
         )
-
-    async def __worker(self):
-        while True:
-            item = await self.__queue.get()
-            self.__generate(item.user_id, item.prompt)
-            self.__queue.task_done()
 
     def __save_to_db(self, user_id: str, audio_path: str):
         if self.__debug:
@@ -107,8 +103,6 @@ class App:
                 LogLevel.ERROR,
             )
 
-        os.remove(audio_path)
-
     def __generate(self, user_id: str, prompt: str):
         try:
             out_path = os.path.join(self.__output_dir, f"{user_id}.wav")
@@ -130,6 +124,16 @@ class App:
     def get_app(self):
         self.__app.include_router(self.__router)
         return self.__app
+
+    async def __worker(self):
+        while True:
+            item = await self.__queue.get()
+            self.__executor.submit(self.__generate, item.user_id, item.prompt)
+            self.__queue.task_done()
+            await asyncio.sleep(5)
+
+    def __activate(self) -> None:
+        asyncio.create_task(self.__worker())
 
     # /generate
     async def generate(
