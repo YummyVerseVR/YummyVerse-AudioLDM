@@ -3,7 +3,7 @@
     "checkpoint": "./data/checkpoints/trained.ckpt",
     "output": "./output",
     "endpoints": {
-        "control": "http://192.168.11.129:8000",
+        "control": "http://192.168.11.147:8000",
         "logger": "http://192.168.11.129:9000"
     }
 }
