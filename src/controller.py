@@ -88,7 +88,7 @@ class AudioLDMController:
         self.__save_path = path
         self.__model.set_log_dir(path, "", "")
 
-    def generate_audio(self, uuid: str, prompt: str):
+    async def generate_audio(self, uuid: str, prompt: str):
         if self.__model is None:
             raise ValueError("Model is None, cannot generate audio.")
 
@@ -118,6 +118,8 @@ class AudioLDMController:
         )
 
         for dir in os.listdir(self.__save_path):
-            for file in os.listdir(f"{self.__save_path}/{dir}"):
-                shutil.move(f"{self.__save_path}/{dir}/{file}", f"{self.__save_path}")
-                shutil.rmtree(f"{self.__save_path}/{dir}")
+            base_path = f"{self.__save_path}/{dir}"
+            for file in os.listdir(base_path):
+                if os.path.exists(f"{base_path}/{file}"):
+                    shutil.move(f"{base_path}/{file}", f"{self.__save_path}")
+                    shutil.rmtree(f"{self.__save_path}/{dir}")

@@ -8,7 +8,6 @@ from pylognet.client import LoggingClient, LogLevel
 
 from fastapi import FastAPI, APIRouter
 from fastapi.responses import JSONResponse
-from concurrent.futures import ThreadPoolExecutor
 
 from controller import AudioLDMController
 
@@ -48,7 +47,6 @@ class App:
         )
 
         self.__queue = asyncio.Queue()
-        self.__executor = ThreadPoolExecutor()
         self.__model = AudioLDMController(
             checkpoint_path,
             yaml.load(open(config_path, "r"), Loader=yaml.FullLoader),
@@ -95,18 +93,21 @@ class App:
                 response = requests.post(
                     f"{self.__control_endpoint}/save/audio", files=files, data=data
                 )
-                os.remove(audio_path)
                 response.raise_for_status()
+
+            if os.path.exists(audio_path):
+                os.remove(audio_path)
+
         except Exception as e:
             self.__logger.log(
                 f"Failed to save generated audio to DB for user_id: {user_id}: {e}",
                 LogLevel.ERROR,
             )
 
-    def __generate(self, user_id: str, prompt: str):
+    async def __generate(self, user_id: str, prompt: str):
         try:
             out_path = os.path.join(self.__output_dir, f"{user_id}.wav")
-            self.__model.generate_audio(
+            await self.__model.generate_audio(
                 out_path,
                 prompt=prompt,
             )
@@ -121,19 +122,19 @@ class App:
                 LogLevel.ERROR,
             )
 
-    def get_app(self):
-        self.__app.include_router(self.__router)
-        return self.__app
-
     async def __worker(self):
         while True:
             item = await self.__queue.get()
-            self.__executor.submit(self.__generate, item.user_id, item.prompt)
+            await self.__generate(item.user_id, item.prompt)
             self.__queue.task_done()
             await asyncio.sleep(5)
 
     def __activate(self) -> None:
         asyncio.create_task(self.__worker())
+
+    def get_app(self):
+        self.__app.include_router(self.__router)
+        return self.__app
 
     # /generate
     async def generate(
