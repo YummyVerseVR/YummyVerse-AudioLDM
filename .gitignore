@@ -28,3 +28,4 @@ audio_dataset/
 clips_rd/
 
 *.service
+ckpt.zip
